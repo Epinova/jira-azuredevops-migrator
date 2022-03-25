@@ -90,7 +90,8 @@ namespace JiraExport
                     UserMappingFile = config.UserMappingFile != null ? Path.Combine(migrationWorkspace, config.UserMappingFile) : string.Empty,
                     AttachmentsDir = Path.Combine(migrationWorkspace, config.AttachmentsFolder),
                     JQL = config.Query,
-                    UsingJiraCloud = config.UsingJiraCloud
+                    UsingJiraCloud = config.UsingJiraCloud,
+                    RemoveCommentsWithCommentVisibility = config.RemoveCommentsWithCommentVisibility
                 };
 
                 JiraProvider jiraProvider = JiraProvider.Initialize(jiraSettings);

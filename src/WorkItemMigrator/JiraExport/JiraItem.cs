@@ -130,9 +130,11 @@ namespace JiraExport
         {
             var renderedFields = jiraItem.RemoteIssue.SelectToken("$.renderedFields.comment.comments");
             var comments = jiraProvider.Jira.Issues.GetCommentsAsync(jiraItem.Key).Result;
-            return comments.Select((c, i) =>
+
+            return comments.Where(c => jiraProvider.Settings.RemoveCommentsWithCommentVisibility ? c.Visibility == null : true).Select((c, i) =>
             {
                 var rc = renderedFields.SelectToken($"$.[{i}].body");
+
                 return new JiraRevision(jiraItem)
                 {
                     Author = c.AuthorUser.Username ?? GetAuthorIdentityOrDefault(c.AuthorUser.AccountId),
@@ -142,7 +144,7 @@ namespace JiraExport
                     LinkActions = new List<RevisionAction<JiraLink>>()
                 };
             }).ToList();
-        }
+        }        
 
         private static void UndoAttachmentChange(RevisionAction<JiraAttachment> attachmentChange, List<JiraAttachment> attachments)
         {
