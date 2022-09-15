@@ -129,22 +129,41 @@ namespace JiraExport
         private static List<JiraRevision> BuildCommentRevisions(JiraItem jiraItem, JiraProvider jiraProvider)
         {
             var renderedFields = jiraItem.RemoteIssue.SelectToken("$.renderedFields.comment.comments");
-            var comments = jiraProvider.Jira.Issues.GetCommentsAsync(jiraItem.Key).Result;
+            var comments = jiraProvider.Jira.Issues.GetCommentsAsync(jiraItem.Key).Result.ToList();
 
-            return comments.Where(c => jiraProvider.Settings.RemoveCommentsWithCommentVisibility ? c.Visibility == null : true).Select((c, i) =>
+            var res = new List<JiraRevision>();
+
+            for (int i = 0; i < comments.Count; i++)
             {
+                var c = comments[i];
                 var rc = renderedFields.SelectToken($"$.[{i}].body");
 
-                return new JiraRevision(jiraItem)
+                if (jiraProvider.Settings.RemoveCommentsWithCommentVisibility && c.Visibility == null)
                 {
-                    Author = c.AuthorUser.Username ?? GetAuthorIdentityOrDefault(c.AuthorUser.AccountId),
-                    Time = c.CreatedDate.Value,
-                    Fields = new Dictionary<string, object>() { { "comment", c.Body }, { "comment$Rendered", rc.Value<string>() } },
-                    AttachmentActions = new List<RevisionAction<JiraAttachment>>(),
-                    LinkActions = new List<RevisionAction<JiraLink>>()
-                };
-            }).ToList();
-        }        
+                    res.Add(new JiraRevision(jiraItem)
+                    {
+                        Author = c.AuthorUser.Username ?? GetAuthorIdentityOrDefault(c.AuthorUser.AccountId),
+                        Time = c.CreatedDate.Value,
+                        Fields = new Dictionary<string, object>() { { "comment", c.Body }, { "comment$Rendered", rc.Value<string>() } },
+                        AttachmentActions = new List<RevisionAction<JiraAttachment>>(),
+                        LinkActions = new List<RevisionAction<JiraLink>>()
+                    });
+                }
+                else if (!jiraProvider.Settings.RemoveCommentsWithCommentVisibility)
+                {
+                    res.Add(new JiraRevision(jiraItem)
+                    {
+                        Author = c.AuthorUser.Username ?? GetAuthorIdentityOrDefault(c.AuthorUser.AccountId),
+                        Time = c.CreatedDate.Value,
+                        Fields = new Dictionary<string, object>() { { "comment", c.Body }, { "comment$Rendered", rc.Value<string>() } },
+                        AttachmentActions = new List<RevisionAction<JiraAttachment>>(),
+                        LinkActions = new List<RevisionAction<JiraLink>>()
+                    });
+                }
+            }
+
+            return res;
+        }
 
         private static void UndoAttachmentChange(RevisionAction<JiraAttachment> attachmentChange, List<JiraAttachment> attachments)
         {
